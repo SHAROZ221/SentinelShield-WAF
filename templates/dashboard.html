@@ -925,7 +925,7 @@ async function clearLogs() {
 function updateClock() {
   const now = new Date();
   document.getElementById('clock').textContent =
-    now.toUTCString().split(' ')[4] + ' UTC';
+    now.toLocaleTimeString('en-IN', { hour12: false }) + ' IST';
 }
 setInterval(updateClock, 1000);
 updateClock();
