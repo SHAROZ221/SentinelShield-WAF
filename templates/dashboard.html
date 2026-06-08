@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SentinelShield – WAF Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:         #080c10;
+    --bg2:        #0d1117;
+    --bg3:        #111820;
+    --panel:      #131c26;
+    --border:     #1a2d40;
+    --border2:    #243547;
+    --cyan:       #00e5ff;
+    --cyan2:      #00b8d9;
+    --green:      #00ff88;
+    --red:        #ff3355;
+    --orange:     #ff9500;
+    --yellow:     #ffe600;
+    --purple:     #b44fff;
+    --text:       #c8dae8;
+    --text2:      #6a8ba0;
+    --text3:      #3d5a70;
+    --glow-cyan:  0 0 20px rgba(0,229,255,0.35);
+    --glow-green: 0 0 20px rgba(0,255,136,0.35);
+    --glow-red:   0 0 20px rgba(255,51,85,0.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Scanline overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* ── Grid background ── */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(8,12,16,0.95);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+    height: 58px;
+  }
+
+  .topbar-left { display: flex; align-items: center; gap: 14px; }
+
+  .logo-icon {
+    width: 34px; height: 34px;
+    background: linear-gradient(135deg, var(--cyan), var(--purple));
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    animation: logo-pulse 3s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes logo-pulse {
+    0%,100% { filter: drop-shadow(0 0 6px var(--cyan)); }
+    50%      { filter: drop-shadow(0 0 18px var(--cyan)); }
+  }
+
+  .logo-text {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 22px; font-weight: 700;
+    letter-spacing: 3px; text-transform: uppercase;
+    background: linear-gradient(90deg, var(--cyan), var(--purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .logo-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; color: var(--text3);
+    letter-spacing: 2px; text-transform: uppercase;
+    margin-top: -4px;
+  }
+
+  .topbar-right { display: flex; align-items: center; gap: 20px; }
+
+  .status-badge {
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.25);
+    border-radius: 20px; padding: 5px 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; color: var(--green);
+    letter-spacing: 1px;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green);
+    animation: blink 1.2s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%,100% { opacity: 1; box-shadow: 0 0 6px var(--green); }
+    50%      { opacity: 0.4; box-shadow: none; }
+  }
+
+  .time-display {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; color: var(--text2);
+    letter-spacing: 1px;
+  }
+
+  .refresh-btn {
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: 6px; padding: 6px 14px;
+    color: var(--cyan); font-family: 'Rajdhani', sans-serif;
+    font-size: 13px; font-weight: 600; letter-spacing: 1px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .refresh-btn:hover {
+    background: rgba(0,229,255,0.18);
+    box-shadow: var(--glow-cyan);
+  }
+
+  /* ── LAYOUT ── */
+  .container {
+    position: relative; z-index: 1;
+    max-width: 1440px; margin: 0 auto;
+    padding: 24px 28px 40px;
+  }
+
+  /* ── STAT CARDS ROW ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px 22px;
+    position: relative; overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .stat-card:hover { border-color: var(--border2); }
+
+  .stat-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .stat-card.cyan::before   { background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
+  .stat-card.green::before  { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+  .stat-card.red::before    { background: linear-gradient(90deg, transparent, var(--red), transparent); }
+  .stat-card.orange::before { background: linear-gradient(90deg, transparent, var(--orange), transparent); }
+
+  .stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--text2);
+    margin-bottom: 10px;
+  }
+
+  .stat-value {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 42px; font-weight: 700;
+    line-height: 1;
+  }
+  .stat-card.cyan   .stat-value { color: var(--cyan); text-shadow: var(--glow-cyan); }
+  .stat-card.green  .stat-value { color: var(--green); text-shadow: var(--glow-green); }
+  .stat-card.red    .stat-value { color: var(--red); text-shadow: var(--glow-red); }
+  .stat-card.orange .stat-value { color: var(--orange); }
+
+  .stat-sub {
+    font-size: 11px; color: var(--text3);
+    margin-top: 6px; font-family: 'Share Tech Mono', monospace;
+  }
+
+  .stat-icon {
+    position: absolute; right: 18px; top: 18px;
+    font-size: 28px; opacity: 0.12;
+  }
+
+  /* ── MAIN GRID ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px; margin-bottom: 16px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .panel-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px; font-weight: 600;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--cyan);
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .panel-title::before {
+    content: '';
+    width: 3px; height: 14px;
+    background: var(--cyan);
+    border-radius: 2px;
+    box-shadow: var(--glow-cyan);
+  }
+
+  .panel-body { padding: 20px; }
+
+  /* ── CHARTS ── */
+  .chart-container { position: relative; height: 220px; }
+
+  /* ── SEVERITY BARS ── */
+  .severity-bar-row {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 14px;
+  }
+  .severity-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; width: 60px; flex-shrink: 0;
+    letter-spacing: 1px;
+  }
+  .severity-label.high   { color: var(--red); }
+  .severity-label.medium { color: var(--orange); }
+  .severity-label.low    { color: var(--yellow); }
+
+  .bar-track {
+    flex: 1; height: 8px; border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 4px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+  .bar-fill.high   { background: linear-gradient(90deg, #ff3355, #ff6680); }
+  .bar-fill.medium { background: linear-gradient(90deg, #ff9500, #ffb84d); }
+  .bar-fill.low    { background: linear-gradient(90deg, #ffe600, #fff066); }
+
+  .bar-count {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; color: var(--text2);
+    width: 30px; text-align: right; flex-shrink: 0;
+  }
+
+  /* ── IP TABLE ── */
+  .ip-table { width: 100%; border-collapse: collapse; }
+  .ip-table th {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text3); padding: 0 0 10px;
+    text-align: left; border-bottom: 1px solid var(--border);
+  }
+  .ip-table td {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(26,45,64,0.5);
+    font-size: 13px;
+  }
+  .ip-table tr:last-child td { border-bottom: none; }
+
+  .ip-addr {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--cyan); font-size: 12px;
+  }
+
+  .req-count {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700; font-size: 16px; color: var(--text);
+    text-align: right;
+  }
+
+  .ip-bar-track {
+    width: 80px; height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px; overflow: hidden;
+    margin-left: auto;
+  }
+  .ip-bar-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--cyan2), var(--cyan));
+  }
+
+  /* ── LOG TABLE ── */
+  .log-wrapper {
+    overflow-x: auto; overflow-y: auto;
+    max-height: 380px;
+  }
+
+  .log-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+
+  .log-table th {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text3); padding: 0 12px 10px;
+    text-align: left; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--panel); z-index: 2;
+  }
+
+  .log-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(26,45,64,0.4);
+    font-size: 12px; vertical-align: middle;
+  }
+
+  .log-table tr:hover td { background: rgba(0,229,255,0.03); }
+
+  .log-table tr.new-entry { animation: row-flash 0.5s ease; }
+  @keyframes row-flash {
+    from { background: rgba(0,229,255,0.1); }
+    to   { background: transparent; }
+  }
+
+  .badge {
+    display: inline-block; border-radius: 4px;
+    padding: 2px 8px; font-size: 10px; font-weight: 700;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+  .badge-blocked { background: rgba(255,51,85,0.15); color: var(--red); border: 1px solid rgba(255,51,85,0.3); }
+  .badge-allowed { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.25); }
+  .badge-rate    { background: rgba(255,149,0,0.12); color: var(--orange); border: 1px solid rgba(255,149,0,0.3); }
+
+  .sev-high   { color: var(--red); font-weight: 700; }
+  .sev-medium { color: var(--orange); }
+  .sev-low    { color: var(--yellow); }
+  .sev-none   { color: var(--text3); }
+
+  .mono { font-family: 'Share Tech Mono', monospace; }
+
+  /* ── DETECTION RATE RING ── */
+  .rate-ring-wrap {
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 6px; padding: 10px 0;
+  }
+
+  .rate-number {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 52px; font-weight: 800;
+    color: var(--cyan); line-height: 1;
+    text-shadow: var(--glow-cyan);
+  }
+
+  .rate-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; letter-spacing: 2px;
+    color: var(--text2); text-transform: uppercase;
+  }
+
+  /* ── SIMULATOR PANEL ── */
+  .sim-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 20px; flex-wrap: wrap;
+  }
+
+  .sim-info { flex: 1; }
+  .sim-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px; font-weight: 700;
+    color: var(--cyan); letter-spacing: 2px; text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .sim-desc {
+    font-size: 12px; color: var(--text2); line-height: 1.6;
+  }
+
+  .sim-actions { display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+
+  .btn {
+    border: none; border-radius: 6px; padding: 9px 20px;
+    font-family: 'Rajdhani', sans-serif; font-size: 13px;
+    font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--cyan2), var(--cyan));
+    color: #080c10;
+    box-shadow: 0 0 0 rgba(0,229,255,0);
+  }
+  .btn-primary:hover {
+    box-shadow: var(--glow-cyan); transform: translateY(-1px);
+  }
+
+  .btn-danger {
+    background: rgba(255,51,85,0.12);
+    border: 1px solid rgba(255,51,85,0.3);
+    color: var(--red);
+  }
+  .btn-danger:hover {
+    background: rgba(255,51,85,0.22);
+    box-shadow: var(--glow-red);
+  }
+
+  .btn-ghost {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border2);
+    color: var(--text);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.08); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center; padding: 40px 20px;
+    color: var(--text3);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; letter-spacing: 1px;
+  }
+
+  /* ── TOAST NOTIFICATION ── */
+  .toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--panel);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--cyan);
+    border-radius: 8px; padding: 12px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; color: var(--text);
+    z-index: 9999; opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* ── FULL-WIDTH LOG PANEL ── */
+  .full-width { grid-column: 1 / -1; }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center; padding: 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; color: var(--text3);
+    letter-spacing: 2px; text-transform: uppercase;
+    border-top: 1px solid var(--border);
+    margin-top: 20px;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--cyan2); }
+</style>
+</head>
+<body>
+
+<!-- ── TOPBAR ─────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-icon">⬡</div>
+    <div>
+      <div class="logo-text">SentinelShield</div>
+      <div class="logo-sub">WAF · IDS · Web Protection</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="status-badge"><div class="status-dot"></div>ACTIVE PROTECTION</div>
+    <div class="time-display" id="clock">--:--:--</div>
+    <button class="refresh-btn" onclick="loadAll()">⟳ REFRESH</button>
+  </div>
+</div>
+
+<!-- ── CONTAINER ─────────────────────────────────────────────────────── -->
+<div class="container">
+
+  <!-- SIMULATOR QUICK-LAUNCH -->
+  <div class="sim-panel">
+    <div class="sim-info">
+      <div class="sim-title">⚡ Attack Simulator</div>
+      <div class="sim-desc">
+        Run the built-in test suite to fire real attack payloads at the WAF.
+        Open a second terminal and run: <strong style="color:var(--cyan)">python simulator.py</strong>
+        — then watch the dashboard update in real time.
+      </div>
+    </div>
+    <div class="sim-actions">
+      <button class="btn btn-primary" onclick="loadAll()">↺ Refresh Data</button>
+      <button class="btn btn-danger" onclick="clearLogs()">✕ Clear Logs</button>
+      <button class="btn btn-ghost" onclick="window.open('/api/logs','_blank')">Raw Logs ↗</button>
+    </div>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stats-row">
+    <div class="stat-card cyan">
+      <div class="stat-label">Total Requests</div>
+      <div class="stat-value" id="total-req">–</div>
+      <div class="stat-sub" id="total-sub">Awaiting data...</div>
+      <div class="stat-icon">◎</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Blocked Attacks</div>
+      <div class="stat-value" id="blocked-count">–</div>
+      <div class="stat-sub" id="blocked-sub">–</div>
+      <div class="stat-icon">⊘</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Clean Requests</div>
+      <div class="stat-value" id="allowed-count">–</div>
+      <div class="stat-sub" id="allowed-sub">–</div>
+      <div class="stat-icon">✓</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-label">Rate Limited</div>
+      <div class="stat-value" id="rate-count">–</div>
+      <div class="stat-sub" id="rate-sub">–</div>
+      <div class="stat-icon">⧖</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID ROW 1 -->
+  <div class="main-grid">
+
+    <!-- Attack Type Distribution Chart -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Attack Type Distribution</div>
+      </div>
+      <div class="panel-body">
+        <div class="chart-container">
+          <canvas id="attackChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Severity Breakdown + Detection Rate -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Severity Breakdown</div>
+      </div>
+      <div class="panel-body">
+        <div class="rate-ring-wrap" style="margin-bottom:20px">
+          <div class="rate-number" id="det-rate">0%</div>
+          <div class="rate-label">Detection Rate</div>
+        </div>
+        <div id="severity-bars">
+          <div class="empty-state">No data yet</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MAIN GRID ROW 2 -->
+  <div class="main-grid" style="margin-bottom:16px">
+
+    <!-- Top Attacking IPs -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Top Attacking IPs</div>
+      </div>
+      <div class="panel-body">
+        <table class="ip-table">
+          <thead>
+            <tr>
+              <th>IP Address</th>
+              <th>Requests</th>
+              <th style="text-align:right">Activity</th>
+            </tr>
+          </thead>
+          <tbody id="ip-table-body">
+            <tr><td colspan="3" class="empty-state">No data yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Request Timeline Chart -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Requests Over Time</div>
+      </div>
+      <div class="panel-body">
+        <div class="chart-container">
+          <canvas id="timelineChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FULL-WIDTH LOG TABLE -->
+  <div class="panel" style="margin-bottom:16px">
+    <div class="panel-header">
+      <div class="panel-title">Live Event Log</div>
+      <div style="font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text3)" id="log-count-label">– entries</div>
+    </div>
+    <div class="panel-body" style="padding:0">
+      <div class="log-wrapper">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>IP Address</th>
+              <th>Method</th>
+              <th>Path</th>
+              <th>Status</th>
+              <th>Attack Type</th>
+              <th>Severity</th>
+            </tr>
+          </thead>
+          <tbody id="log-body">
+            <tr><td colspan="7" class="empty-state">Run the simulator or send requests to see events here</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<div class="footer">SentinelShield v1.0 · Advanced Intrusion Detection & Web Protection · Built for Cybersecurity Lab</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CHART INSTANCES
+// ═══════════════════════════════════════════════════════════════
+
+const CHART_DEFAULTS = {
+  font: { family: "'Exo 2', sans-serif" },
+  color: 'rgba(200,218,232,0.7)'
+};
+Chart.defaults.color = CHART_DEFAULTS.color;
+Chart.defaults.font  = CHART_DEFAULTS.font;
+
+const COLORS = [
+  '#ff3355','#00e5ff','#ff9500','#00ff88',
+  '#b44fff','#ffe600','#00b8d9','#ff6680'
+];
+
+let attackChart   = null;
+let timelineChart = null;
+
+function buildAttackChart(labels, data) {
+  const ctx = document.getElementById('attackChart').getContext('2d');
+  if (attackChart) attackChart.destroy();
+  attackChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: COLORS.map(c => c + '99'),
+        borderColor: COLORS,
+        borderWidth: 2,
+        hoverOffset: 10
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { boxWidth: 12, padding: 14, font: { size: 11 } }
+        }
+      },
+      cutout: '62%'
+    }
+  });
+}
+
+function buildTimelineChart(labels, blocked, allowed) {
+  const ctx = document.getElementById('timelineChart').getContext('2d');
+  if (timelineChart) timelineChart.destroy();
+  timelineChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Blocked',
+          data: blocked,
+          borderColor: '#ff3355',
+          backgroundColor: 'rgba(255,51,85,0.08)',
+          tension: 0.4, fill: true, pointRadius: 3,
+          pointBackgroundColor: '#ff3355'
+        },
+        {
+          label: 'Allowed',
+          data: allowed,
+          borderColor: '#00ff88',
+          backgroundColor: 'rgba(0,255,136,0.06)',
+          tension: 0.4, fill: true, pointRadius: 3,
+          pointBackgroundColor: '#00ff88'
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { boxWidth: 12, font: { size: 11 } } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 10 } }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DATA LOADING
+// ═══════════════════════════════════════════════════════════════
+
+async function loadAll() {
+  try {
+    const [statsRes, logsRes] = await Promise.all([
+      fetch('/api/stats'),
+      fetch('/api/logs?limit=100')
+    ]);
+    const stats = await statsRes.json();
+    const logsData = await logsRes.json();
+    renderStats(stats);
+    renderLogs(logsData.logs || []);
+    buildTimelineFromLogs(logsData.logs || []);
+  } catch(e) {
+    console.error('Load error:', e);
+  }
+}
+
+function renderStats(s) {
+  // Stat cards
+  setText('total-req',    s.total_requests ?? 0);
+  setText('blocked-count', s.blocked_count ?? 0);
+  setText('allowed-count', s.allowed_count ?? 0);
+  setText('rate-count',    s.rate_limited_count ?? 0);
+  setText('total-sub',    `Since last reset`);
+  setText('blocked-sub',  `${s.detection_rate ?? 0}% of all traffic`);
+  setText('allowed-sub',  `Legitimate requests`);
+  setText('rate-sub',     `Flagged IPs: ${(s.monitor?.currently_blocked ?? 0)}`);
+
+  // Detection rate
+  setText('det-rate', (s.detection_rate ?? 0) + '%');
+
+  // Severity bars
+  const sev = s.severity_breakdown || {};
+  const maxSev = Math.max(sev.HIGH||0, sev.MEDIUM||0, sev.LOW||0, 1);
+  document.getElementById('severity-bars').innerHTML = `
+    <div class="severity-bar-row">
+      <span class="severity-label high">HIGH</span>
+      <div class="bar-track"><div class="bar-fill high" style="width:${((sev.HIGH||0)/maxSev*100).toFixed(0)}%"></div></div>
+      <span class="bar-count">${sev.HIGH||0}</span>
+    </div>
+    <div class="severity-bar-row">
+      <span class="severity-label medium">MEDIUM</span>
+      <div class="bar-track"><div class="bar-fill medium" style="width:${((sev.MEDIUM||0)/maxSev*100).toFixed(0)}%"></div></div>
+      <span class="bar-count">${sev.MEDIUM||0}</span>
+    </div>
+    <div class="severity-bar-row">
+      <span class="severity-label low">LOW</span>
+      <div class="bar-track"><div class="bar-fill low" style="width:${((sev.LOW||0)/maxSev*100).toFixed(0)}%"></div></div>
+      <span class="bar-count">${sev.LOW||0}</span>
+    </div>
+  `;
+
+  // Attack chart
+  const ab = s.attack_breakdown || {};
+  const labels = Object.keys(ab);
+  const data   = Object.values(ab);
+  if (labels.length > 0) {
+    buildAttackChart(labels, data);
+  } else {
+    buildAttackChart(['No attacks yet'], [1]);
+  }
+
+  // IP table
+  const ips = s.top_attacking_ips || [];
+  const maxIpCount = ips.length > 0 ? ips[0].count : 1;
+  const ipHtml = ips.length === 0
+    ? `<tr><td colspan="3" class="empty-state">No attacking IPs yet</td></tr>`
+    : ips.map(ip => `
+      <tr>
+        <td><span class="ip-addr">${ip.ip}</span></td>
+        <td><span class="req-count">${ip.count}</span></td>
+        <td>
+          <div class="ip-bar-track">
+            <div class="ip-bar-fill" style="width:${(ip.count/maxIpCount*100).toFixed(0)}%"></div>
+          </div>
+        </td>
+      </tr>`).join('');
+  document.getElementById('ip-table-body').innerHTML = ipHtml;
+}
+
+function renderLogs(logs) {
+  document.getElementById('log-count-label').textContent = `${logs.length} entries`;
+
+  if (!logs || logs.length === 0) {
+    document.getElementById('log-body').innerHTML =
+      `<tr><td colspan="7" class="empty-state">No events yet — run the simulator or send a request</td></tr>`;
+    return;
+  }
+
+  const rows = logs.map((log, i) => {
+    const evt = log.event || '';
+    const badge = evt === 'BLOCKED'
+      ? '<span class="badge badge-blocked">BLOCKED</span>'
+      : evt === 'RATE_LIMITED'
+      ? '<span class="badge badge-rate">RATE LTD</span>'
+      : '<span class="badge badge-allowed">ALLOWED</span>';
+
+    const dets = log.detections || [];
+    const attackName = dets.length > 0 ? dets.map(d=>d.name).join(', ') : '—';
+    const severity   = dets.length > 0 ? dets[0].severity : '';
+    const sevClass   = severity === 'HIGH' ? 'sev-high'
+                     : severity === 'MEDIUM' ? 'sev-medium'
+                     : severity === 'LOW' ? 'sev-low' : 'sev-none';
+
+    const ts = log.timestamp ? log.timestamp.replace(' UTC','') : '—';
+    const path = (log.path || '/').substring(0, 30);
+
+    return `<tr>
+      <td class="mono" style="font-size:11px;color:var(--text3)">${ts}</td>
+      <td><span class="ip-addr">${log.ip || '—'}</span></td>
+      <td class="mono" style="color:var(--cyan2)">${log.method || '—'}</td>
+      <td class="mono" style="color:var(--text2)">${path}</td>
+      <td>${badge}</td>
+      <td style="font-size:12px;color:var(--text)">${attackName.substring(0,40)}</td>
+      <td class="${sevClass} mono" style="font-size:11px">${severity || '—'}</td>
+    </tr>`;
+  });
+
+  document.getElementById('log-body').innerHTML = rows.join('');
+}
+
+function buildTimelineFromLogs(logs) {
+  if (!logs || logs.length === 0) {
+    buildTimelineChart(['—'], [0], [0]);
+    return;
+  }
+
+  // Group by minute
+  const buckets = {};
+  logs.slice().reverse().forEach(log => {
+    const ts = log.timestamp || '';
+    const minute = ts.substring(11, 16) || '??:??';
+    if (!buckets[minute]) buckets[minute] = { blocked: 0, allowed: 0 };
+    if (log.event === 'BLOCKED' || log.event === 'RATE_LIMITED') {
+      buckets[minute].blocked++;
+    } else {
+      buckets[minute].allowed++;
+    }
+  });
+
+  const labels  = Object.keys(buckets).slice(-15);
+  const blocked = labels.map(l => buckets[l].blocked);
+  const allowed = labels.map(l => buckets[l].allowed);
+  buildTimelineChart(labels, blocked, allowed);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+async function clearLogs() {
+  if (!confirm('Clear all log data? This cannot be undone.')) return;
+  try {
+    await fetch('/api/clear', { method: 'POST' });
+    showToast('✓ Logs cleared');
+    loadAll();
+  } catch(e) {
+    showToast('Error clearing logs');
+  }
+}
+
+// Live clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toUTCString().split(' ')[4] + ' UTC';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// Auto-refresh every 5 seconds
+setInterval(loadAll, 5000);
+
+// Initial load
+loadAll();
+</script>
+</body>
+</html>
