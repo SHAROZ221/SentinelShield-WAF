@@ -17,7 +17,7 @@
 
 <br/>
 
-**[🚀 Live Demo](https://web-production-41b62.up.railway.app)** · **[📊 Dashboard](https://web-production-41b62.up.railway.app/dashboard)** · **[📋 API Logs](https://web-production-41b62.up.railway.app/api/logs)**
+**[🚀Live Demo](https://web-production-41b62.up.railway.app)** · **[📊Dashboard](https://web-production-41b62.up.railway.app/dashboard)** · 
 
 </div>
 
