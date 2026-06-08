@@ -7,11 +7,11 @@
 ![Flask](https://img.shields.io/badge/Flask-3.0-000000?style=flat-square&logo=flask&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Active-00ff88?style=flat-square)
 ![Type](https://img.shields.io/badge/Type-WAF%20%2F%20IDS-red?style=flat-square)
+[![Live Demo](https://img.shields.io/badge/🛡️_Live_Demo-Railway-blueviolet?style=flat-square)](https://web-production-41b62.up.railway.app)
 
 *A Python-based Web Application Firewall that detects real-world attacks, monitors traffic behaviour, logs events, and displays everything on a live dashboard.*
 
 </div>
-
 ---
 
 ## 🔍 What is SentinelShield?
