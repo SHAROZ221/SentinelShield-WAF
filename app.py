@@ -27,11 +27,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=False)
 
-# Import our custom modules
-from rules   import inspect_request
-from monitor import record_request, is_blocked, get_stats as monitor_stats
-from logger  import log_event, get_statistics, read_logs, clear_logs, \
-                    EVENT_ALLOWED, EVENT_BLOCKED, EVENT_RATE_LIMIT
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FLASK APP SETUP
