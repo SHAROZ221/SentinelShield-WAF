@@ -23,10 +23,10 @@ from collections import defaultdict
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Maximum requests allowed from one IP within the time window
-MAX_REQUESTS = 15
+MAX_REQUESTS = 5
 
 # Time window in seconds (30 seconds)
-TIME_WINDOW = 30
+TIME_WINDOW = 60
 
 # How long (seconds) a flagged IP stays on the blocklist
 BLOCK_DURATION = 120  # 2 minutes
