@@ -387,7 +387,7 @@ if __name__ == "__main__":
     for i, test in enumerate(TEST_CASES, start=1):
         result = run_single_test(test, i)
         results.append(result)
-        time.sleep(0.1)  # Small delay between requests
+        time.sleep(0.3)  # Small delay between requests
 
     # ── Brute force test ──────────────────────────────────────────────────
     brute_result = run_brute_force_test()
