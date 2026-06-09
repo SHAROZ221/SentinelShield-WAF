@@ -172,11 +172,44 @@ def upload():
 # API ROUTES
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Store the latest simulator report in memory
+latest_simulator_report = {}
+
+@app.route("/api/report", methods=["GET", "POST"])
+def api_report():
+    """Receives the final analysis report from the simulator."""
+    global latest_simulator_report
+    if request.method == "POST":
+        latest_simulator_report = request.get_json(force=True, silent=True) or {}
+        return jsonify({"message": "Report saved successfully"}), 201
+        
+    if not latest_simulator_report:
+        return jsonify({"message": "No report generated yet. Please run simulator.py first."}), 404
+        
+    return jsonify({
+        "status": "success",
+        "title": "SentinelShield Practical Work - Final Analysis Report",
+        "data": latest_simulator_report
+    }), 200
+
+
 @app.route("/api/stats", methods=["GET"])
 def api_stats():
     log_stats = get_statistics()
     mon_stats = monitor_stats()
-    return jsonify({**log_stats, "monitor": mon_stats})
+    
+    # Inject False Positives/Negatives into the main stats API
+    fp_fn_stats = {
+        "false_positives": latest_simulator_report.get("false_positives", 0) if latest_simulator_report else 0,
+        "false_negatives": latest_simulator_report.get("false_negatives", 0) if latest_simulator_report else 0,
+        "accuracy": latest_simulator_report.get("accuracy_percentage", 0) if latest_simulator_report else 0
+    }
+    
+    return jsonify({
+        **log_stats, 
+        "monitor": mon_stats, 
+        "simulator_accuracy": fp_fn_stats
+    })
 
 
 @app.route("/api/logs", methods=["GET"])
@@ -190,7 +223,6 @@ def api_logs():
 def api_clear():
     result = clear_logs()
     return jsonify(result)
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DASHBOARD
