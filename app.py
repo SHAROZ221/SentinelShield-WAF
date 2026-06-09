@@ -63,7 +63,7 @@ def waf_inspect():
     if any(request.path.startswith(p) for p in internal_paths_prefix):
         return None
 
-    ip         = request.remote_addr or "unknown"
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
     method     = request.method
     path       = request.path
     user_agent = request.headers.get("User-Agent", "")
