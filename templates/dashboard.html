@@ -871,9 +871,10 @@ function buildTimelineFromLogs(logs) {
   if (!logs || logs.length === 0) { buildTimelineChart(['—'],[0],[0]); return; }
   const buckets = {};
   logs.slice().reverse().forEach(log => {
-    const minute = (log.timestamp||'').substring(11,16) || '??:??';
-    if (!buckets[minute]) buckets[minute] = { blocked:0, allowed:0 };
-    (log.event === 'BLOCKED' || log.event === 'RATE_LIMITED') ? buckets[minute].blocked++ : buckets[minute].allowed++;
+    // We changed 11,16 to 11,19 to grab the SECONDS as well!
+    const timeLabel = (log.timestamp||'').substring(11,19) || '??:??:??';
+    if (!buckets[timeLabel]) buckets[timeLabel] = { blocked:0, allowed:0 };
+    (log.event === 'BLOCKED' || log.event === 'RATE_LIMITED') ? buckets[timeLabel].blocked++ : buckets[timeLabel].allowed++;
   });
   const labels = Object.keys(buckets).slice(-15);
   buildTimelineChart(labels, labels.map(l=>buckets[l].blocked), labels.map(l=>buckets[l].allowed));
