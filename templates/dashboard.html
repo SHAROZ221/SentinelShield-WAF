@@ -478,7 +478,6 @@
 </head>
 <body>
 
-<!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-left">
     <div class="logo-mark">🛡</div>
@@ -499,7 +498,6 @@
 
 <div class="container">
 
-  <!-- PAGE HEADER -->
   <div class="page-header">
     <div>
       <div class="page-title">Security Overview</div>
@@ -512,7 +510,6 @@
     </div>
   </div>
 
-  <!-- SIMULATOR BANNER -->
   <div class="sim-banner">
     <div class="sim-left">
       <div class="sim-icon">⚡</div>
@@ -523,7 +520,33 @@
     </div>
   </div>
 
-  <!-- STAT CARDS -->
+  <div class="stats-row" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 24px;">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-label">Simulator Accuracy</div>
+        <div class="stat-icon-wrap blue">🎯</div>
+      </div>
+      <div class="stat-value" id="sim-accuracy">—</div>
+      <div class="stat-sub">Overall detection score</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-label">False Positives</div>
+        <div class="stat-icon-wrap red">⚠️</div>
+      </div>
+      <div class="stat-value" id="sim-fp">—</div>
+      <div class="stat-sub">Clean traffic wrongly blocked</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-label">False Negatives</div>
+        <div class="stat-icon-wrap red">❌</div>
+      </div>
+      <div class="stat-value" id="sim-fn">—</div>
+      <div class="stat-sub">Attacks wrongly allowed</div>
+    </div>
+  </div>
+
   <div class="stats-row">
     <div class="stat-card">
       <div class="stat-header">
@@ -559,7 +582,6 @@
     </div>
   </div>
 
-  <!-- ROW 1: Charts -->
   <div class="grid-2">
 
     <div class="card">
@@ -582,7 +604,6 @@
 
   </div>
 
-  <!-- ROW 2: Severity + IPs -->
   <div class="grid-3">
 
     <div class="card">
@@ -622,7 +643,6 @@
 
   </div>
 
-  <!-- LOG TABLE -->
   <div class="card">
     <div class="card-header">
       <div class="card-title"><span class="card-title-dot"></span>Live Event Log</div>
@@ -807,6 +827,13 @@ function renderStats(s) {
         <td><span class="ip-count">${ip.count}</span></td>
         <td><div class="ip-bar-wrap"><div class="ip-bar-fill" style="width:${(ip.count/maxIp*100).toFixed(0)}%"></div></div></td>
       </tr>`).join('');
+
+  // Connect the new Simulator Accuracy data
+  if (s.simulator_accuracy) {
+    setText('sim-accuracy', s.simulator_accuracy.accuracy + '%');
+    setText('sim-fp', s.simulator_accuracy.false_positives);
+    setText('sim-fn', s.simulator_accuracy.false_negatives);
+  }
 }
 
 function renderLogs(logs) {
