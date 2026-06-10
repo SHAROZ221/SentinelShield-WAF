@@ -203,7 +203,7 @@ def api_stats():
     fp_fn_stats = {
         "false_positives": latest_simulator_report.get("false_positives", 0) if latest_simulator_report else 0,
         "false_negatives": latest_simulator_report.get("false_negatives", 0) if latest_simulator_report else 0,
-        "accuracy": latest_simulator_report.get("accuracy_percentage", 0) if latest_simulator_report else 0
+        "accuracy": latest_simulator_report.get("accuracy", 0) if latest_simulator_report else 0
     }
     
     return jsonify({
