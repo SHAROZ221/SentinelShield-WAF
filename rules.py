@@ -32,7 +32,7 @@ ATTACK_RULES = [
             r"(union[\s\+]+select)",                                # UNION SELECT
             r"(DROP\s+TABLE|DROP\s+DATABASE)",                   # DROP TABLE
             r"(INSERT\s+INTO|DELETE\s+FROM|UPDATE\s+\w+\s+SET)", # DML attacks
-            r"(--|\#|\/\*)\s*$",                                 # SQL comments at end
+            r"(--|\#|\/\*)",                                  # SQL comments at end
             r"(\bOR\b|\bAND\b)\s+[\'\"]?\w+[\'\"]?\s*=\s*[\'\"]?\w+[\'\"]?",
             r"(SELECT\s+.+\s+FROM\s+\w+)",                       # SELECT ... FROM
             r"(SLEEP\s*\(\s*\d+\s*\))",                          # Time-based blind
