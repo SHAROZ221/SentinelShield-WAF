@@ -397,4 +397,5 @@ if __name__ == "__main__":
     brute_result = run_brute_force_test()
 
     # ── Print summary ─────────────────────────────────────────────────────
-    print_summary(results, brute_result)
+     summary = print_summary(results, brute_result)
+    save_report(results, brute_result, summary)
