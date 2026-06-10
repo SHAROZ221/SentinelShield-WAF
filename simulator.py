@@ -256,9 +256,13 @@ BRUTE_FORCE_TEST = {
 
 def run_single_test(test: dict, index: int) -> dict:
     """Fire a single test request and return the result."""
-    url     = BASE_URL + test["endpoint"]
-    method  = test["method"].upper()
+    url    = BASE_URL + test["endpoint"]
+    method = test["method"].upper()
     headers = test.get("headers", {})
+    
+    # Add browser-like User-Agent if not already set (avoids scanner detection)
+    if "User-Agent" not in headers:
+        headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
     try:
         if method == "GET":
