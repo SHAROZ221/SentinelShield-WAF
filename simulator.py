@@ -447,6 +447,28 @@ def save_report(results: list, brute_result: dict, summary: dict):
     print(f"  {GREEN}Report saved → {report_path}{RESET}")
 
 
+def post_results_to_dashboard(summary: dict):
+    """Send simulation results to the WAF server for dashboard display."""
+    try:
+        resp = requests.post(
+            BASE_URL + "/api/report",
+            json={
+                "accuracy":        summary["accuracy"],
+                "false_positives": summary["false_positives"],
+                "false_negatives": summary["false_negatives"],
+                "true_positives":  summary["true_positives"],
+                "true_negatives":  summary["true_negatives"],
+            },
+            timeout=5
+        )
+        if resp.status_code == 200:
+            print(f"  {GREEN}✓ Dashboard updated with simulation results{RESET}")
+        else:
+            print(f"  {YELLOW}⚠ Dashboard responded with status {resp.status_code}{RESET}")
+    except Exception as e:
+        print(f"  {YELLOW}⚠ Could not update dashboard: {e}{RESET}")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────────────────────────────────────
@@ -491,3 +513,6 @@ if __name__ == "__main__":
 
     # ── Save report to file ───────────────────────────────────────────────
     save_report(results, brute_result, summary)
+
+    # ── POST results to dashboard ─────────────────────────────────────────
+    post_results_to_dashboard(summary)
