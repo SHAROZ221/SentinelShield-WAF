@@ -29,7 +29,7 @@ ATTACK_RULES = [
         "severity": "HIGH",
         "patterns": [
             r"('|\")\s*(OR|AND)\s*('|\")?\s*\d+\s*=\s*\d+",   # ' OR 1=1
-            r"(UNION\s+SELECT)",                                 # UNION SELECT
+            r"(union[\s\+]+select)",                                # UNION SELECT
             r"(DROP\s+TABLE|DROP\s+DATABASE)",                   # DROP TABLE
             r"(INSERT\s+INTO|DELETE\s+FROM|UPDATE\s+\w+\s+SET)", # DML attacks
             r"(--|\#|\/\*)\s*$",                                 # SQL comments at end
