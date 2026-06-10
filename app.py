@@ -1,7 +1,7 @@
 """
 app.py – SentinelShield Main WAF Server
 """
-
+from urllib.parse import unquote
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 import json
@@ -42,9 +42,10 @@ def extract_request_data(req) -> tuple:
         if raw:
             parts.append(raw[:500])
     except Exception:
-        pass
+        pass    
     parts.append(req.headers.get("User-Agent", ""))
     combined = " ".join(parts)
+    combined = unquote(combined)
     payload_sample = combined[:300]
     return combined, payload_sample
 
