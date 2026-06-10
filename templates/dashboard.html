@@ -728,27 +728,27 @@ function buildTimelineChart(labels, blocked, allowed) {
     return;
   }
   timelineChart = new Chart(ctx, {
-    type: 'line',
+    type: 'bar',
     data: {
       labels,
-      datasets: [
-        {
-          label: 'Blocked',
-          data: blocked,
-          borderColor: '#dc2626',
-          backgroundColor: 'rgba(220,38,38,0.06)',
-          tension: 0.4, fill: true, pointRadius: 3,
-          pointBackgroundColor: '#dc2626', borderWidth: 2
-        },
-        {
-          label: 'Allowed',
-          data: allowed,
-          borderColor: '#16a34a',
-          backgroundColor: 'rgba(22,163,74,0.06)',
-          tension: 0.4, fill: true, pointRadius: 3,
-          pointBackgroundColor: '#16a34a', borderWidth: 2
-        }
-      ]
+     datasets: [
+  {
+    label: 'Blocked',
+    data: blocked,
+    backgroundColor: 'rgba(220,38,38,0.8)',
+    borderColor: '#dc2626',
+    borderWidth: 1,
+    borderRadius: 4,
+  },
+  {
+    label: 'Allowed',
+    data: allowed,
+    backgroundColor: 'rgba(22,163,74,0.8)',
+    borderColor: '#16a34a',
+    borderWidth: 1,
+    borderRadius: 4,
+  }
+]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
