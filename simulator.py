@@ -353,7 +353,7 @@ def print_summary(results: list, brute_result: dict):
     print(f"  Accuracy           : {round(correct/total*100, 1)}%")
     print(f"\n  Brute-force test   : {brute_result.get('rate_limited', 0)} requests rate-limited")
     print(f"\n  {CYAN}View full results on the dashboard:{RESET}")
-    print(f"  → {BOLD}http://localhost:5000/{RESET}")
+    print(f"  → {BOLD}https://web-production-41b62.up.railway.app/{RESET}")
     print(f"{'═'*70}\n")
 
 
