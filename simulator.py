@@ -5,26 +5,28 @@ This script fires a series of real-world attack payloads at the
 SentinelShield WAF so you can see the detection system in action.
 
 It sends:
-  ✓ Normal clean requests (should be ALLOWED)
-  ✗ SQL Injection attacks (should be BLOCKED)
-  ✗ XSS attacks (should be BLOCKED)
-  ✗ Command Injection (should be BLOCKED)
-  ✗ LFI / Directory Traversal (should be BLOCKED)
-  ✗ Brute-force simulation (should trigger RATE LIMIT)
-  ✗ Scanner simulation (should be BLOCKED)
+  ✓ Normal clean requests        (should be ALLOWED)
+  ✗ SQL Injection attacks         (should be BLOCKED)
+  ✗ XSS attacks                   (should be BLOCKED)
+  ✗ Command Injection             (should be BLOCKED)
+  ✗ LFI / Directory Traversal    (should be BLOCKED)
+  ✗ Brute-force simulation        (should trigger RATE LIMIT)
+  ✗ Scanner simulation            (should be BLOCKED)
 
 HOW TO RUN:
-    Make sure app.py is running first, then:
     python simulator.py
 
 Results are printed to the terminal and all events appear in the dashboard.
+A report is saved to: logs/simulation_report.txt
 """
 
+from datetime import datetime
+import os
 import requests
 import time
 import json
 
-BASE_URL = "https://web-production-41b62.up.railway.app/"
+BASE_URL = "https://web-production-41b62.up.railway.app"
 
 # Terminal color codes for pretty output
 GREEN  = "\033[92m"
@@ -37,14 +39,6 @@ BOLD   = "\033[1m"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TEST CASES
-# Each dict has:
-#   category    : Attack type label
-#   description : What this test does
-#   method      : GET or POST
-#   endpoint    : Which route to hit
-#   params      : URL query parameters (for GET)
-#   data        : POST body data
-#   expected    : "BLOCKED" or "ALLOWED"
 # ─────────────────────────────────────────────────────────────────────────────
 
 TEST_CASES = [
@@ -237,7 +231,7 @@ TEST_CASES = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# BRUTE FORCE SIMULATION (separate because it's high-volume)
+# BRUTE FORCE SIMULATION
 # ─────────────────────────────────────────────────────────────────────────────
 
 BRUTE_FORCE_TEST = {
@@ -245,7 +239,7 @@ BRUTE_FORCE_TEST = {
     "description": "Rapid repeated login attempts (rate limit trigger)",
     "method":      "POST",
     "endpoint":    "/login",
-    "count":       20,          # Send 20 requests rapidly
+    "count":       20,
     "data_template": lambda i: {"username": "admin", "password": f"password{i}"},
 }
 
@@ -259,7 +253,7 @@ def run_single_test(test: dict, index: int) -> dict:
     url    = BASE_URL + test["endpoint"]
     method = test["method"].upper()
     headers = test.get("headers", {})
-    
+
     # Add browser-like User-Agent if not already set (avoids scanner detection)
     if "User-Agent" not in headers:
         headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -282,8 +276,17 @@ def run_single_test(test: dict, index: int) -> dict:
         expected = test["expected"]
         correct  = actual == expected
 
-        # Print result
-        status_icon = f"{GREEN}✓ PASS{RESET}" if correct else f"{RED}✗ FAIL{RESET}"
+        # Classify detection quality
+        if expected == "BLOCKED" and actual == "BLOCKED":
+            outcome_type = "TRUE POSITIVE"
+        elif expected == "ALLOWED" and actual == "ALLOWED":
+            outcome_type = "TRUE NEGATIVE"
+        elif expected == "ALLOWED" and actual == "BLOCKED":
+            outcome_type = "FALSE POSITIVE"
+        else:
+            outcome_type = "FALSE NEGATIVE"
+
+        status_icon  = f"{GREEN}✓ PASS{RESET}" if correct else f"{RED}✗ FAIL{RESET}"
         blocked_icon = f"{RED}BLOCKED{RESET}" if actual == "BLOCKED" else f"{GREEN}ALLOWED{RESET}"
 
         print(f"  [{index:02d}] {status_icon}  "
@@ -292,12 +295,13 @@ def run_single_test(test: dict, index: int) -> dict:
               f"→ {blocked_icon} (HTTP {resp.status_code})")
 
         return {
-            "test": test["description"],
-            "category": test["category"],
-            "expected": expected,
-            "actual": actual,
-            "http_code": resp.status_code,
-            "correct": correct
+            "test":         test["description"],
+            "category":     test["category"],
+            "expected":     expected,
+            "actual":       actual,
+            "http_code":    resp.status_code,
+            "correct":      correct,
+            "outcome_type": outcome_type,
         }
 
     except requests.exceptions.ConnectionError:
@@ -314,7 +318,7 @@ def run_brute_force_test():
     print(f"\n  {YELLOW}[BRUTE FORCE SIMULATION]{RESET} "
           f"Sending {BRUTE_FORCE_TEST['count']} rapid requests to /login...")
 
-    url       = BASE_URL + BRUTE_FORCE_TEST["endpoint"]
+    url           = BASE_URL + BRUTE_FORCE_TEST["endpoint"]
     blocked_count = 0
     allowed_count = 0
 
@@ -328,7 +332,7 @@ def run_brute_force_test():
                 allowed_count += 1
         except Exception:
             pass
-        time.sleep(0.05)  # 50ms between requests — still fast
+        time.sleep(0.05)
 
     print(f"  Result: {GREEN}{allowed_count} allowed{RESET} → "
           f"{RED}{blocked_count} rate-limited{RESET}")
@@ -339,22 +343,108 @@ def run_brute_force_test():
 
 
 def print_summary(results: list, brute_result: dict):
-    """Print a final summary table."""
+    """Print a final summary table and return summary dict."""
     total   = len(results)
     correct = sum(1 for r in results if r.get("correct"))
     wrong   = total - correct
 
+    true_pos  = sum(1 for r in results if r.get("outcome_type") == "TRUE POSITIVE")
+    true_neg  = sum(1 for r in results if r.get("outcome_type") == "TRUE NEGATIVE")
+    false_pos = sum(1 for r in results if r.get("outcome_type") == "FALSE POSITIVE")
+    false_neg = sum(1 for r in results if r.get("outcome_type") == "FALSE NEGATIVE")
+
+    accuracy = round(correct / total * 100, 1) if total > 0 else 0
+
     print(f"\n{'═'*70}")
     print(f"{BOLD}  SIMULATION COMPLETE — SUMMARY{RESET}")
     print(f"{'═'*70}")
-    print(f"  Total tests run    : {total}")
-    print(f"  {GREEN}Correct detections : {correct}{RESET}")
-    print(f"  {RED}Missed / Wrong     : {wrong}{RESET}")
-    print(f"  Accuracy           : {round(correct/total*100, 1)}%")
-    print(f"\n  Brute-force test   : {brute_result.get('rate_limited', 0)} requests rate-limited")
+    print(f"  Total tests run       : {total}")
+    print(f"  {GREEN}Correct detections    : {correct}{RESET}")
+    print(f"  {RED}Missed / Wrong        : {wrong}{RESET}")
+    print(f"  Accuracy              : {accuracy}%")
+    print(f"\n  {BOLD}Detection Quality Breakdown:{RESET}")
+    print(f"  {GREEN}True Positives  (attacks correctly blocked) : {true_pos}{RESET}")
+    print(f"  {GREEN}True Negatives  (clean requests allowed)    : {true_neg}{RESET}")
+    print(f"  {YELLOW}False Positives (clean requests blocked)    : {false_pos}{RESET}")
+    print(f"  {RED}False Negatives (attacks that slipped through): {false_neg}{RESET}")
+    print(f"\n  Brute-force test      : {brute_result.get('rate_limited', 0)} requests rate-limited")
     print(f"\n  {CYAN}View full results on the dashboard:{RESET}")
     print(f"  → {BOLD}https://web-production-41b62.up.railway.app/{RESET}")
     print(f"{'═'*70}\n")
+
+    return {
+        "total":           total,
+        "correct":         correct,
+        "wrong":           wrong,
+        "accuracy":        accuracy,
+        "true_positives":  true_pos,
+        "true_negatives":  true_neg,
+        "false_positives": false_pos,
+        "false_negatives": false_neg,
+    }
+
+
+def save_report(results: list, brute_result: dict, summary: dict):
+    """Save simulation report to logs/simulation_report.txt"""
+    os.makedirs("logs", exist_ok=True)
+    report_path = os.path.join("logs", "simulation_report.txt")
+
+    lines = []
+    lines.append("=" * 70)
+    lines.append("  SENTINELSHIELD WAF — SIMULATION REPORT")
+    lines.append(f"  Generated : {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    lines.append("=" * 70)
+    lines.append("")
+    lines.append("1. OVERVIEW")
+    lines.append("-" * 40)
+    lines.append(f"   Total tests run     : {summary['total']}")
+    lines.append(f"   Correct detections  : {summary['correct']}")
+    lines.append(f"   Incorrect           : {summary['wrong']}")
+    lines.append(f"   Detection accuracy  : {summary['accuracy']}%")
+    lines.append("")
+    lines.append("2. DETECTION QUALITY")
+    lines.append("-" * 40)
+    lines.append(f"   True Positives  (attacks correctly blocked)  : {summary['true_positives']}")
+    lines.append(f"   True Negatives  (clean requests allowed)     : {summary['true_negatives']}")
+    lines.append(f"   False Positives (clean requests blocked)     : {summary['false_positives']}")
+    lines.append(f"   False Negatives (attacks slipped through)    : {summary['false_negatives']}")
+    lines.append("")
+    lines.append("3. BRUTE FORCE / RATE LIMITING")
+    lines.append("-" * 40)
+    lines.append(f"   Requests sent         : {BRUTE_FORCE_TEST['count']}")
+    lines.append(f"   Requests allowed      : {brute_result.get('allowed', 0)}")
+    lines.append(f"   Requests rate-limited : {brute_result.get('rate_limited', 0)}")
+    lines.append(f"   Rate limiter triggered: {'YES' if brute_result.get('rate_limited', 0) > 0 else 'NO'}")
+    lines.append("")
+    lines.append("4. INDIVIDUAL TEST RESULTS")
+    lines.append("-" * 40)
+    for i, r in enumerate(results, start=1):
+        status = "PASS" if r.get("correct") else "FAIL"
+        lines.append(
+            f"   [{i:02d}] {status:4}  {r.get('category', ''):25}"
+            f"  {r.get('test', '')[:45]:45}"
+            f"  Expected={r.get('expected','?')}  Got={r.get('actual','?')}"
+            f"  ({r.get('outcome_type', '')})"
+        )
+    lines.append("")
+    lines.append("5. SECURITY RECOMMENDATIONS")
+    lines.append("-" * 40)
+    if summary["false_negatives"] > 0:
+        lines.append("   ⚠  False negatives detected — strengthen regex rules in rules.py")
+    if summary["false_positives"] > 0:
+        lines.append("   ⚠  False positives detected — consider whitelisting safe patterns")
+    if summary["false_negatives"] == 0 and summary["false_positives"] == 0:
+        lines.append("   ✓  No false positives or false negatives — rules well-calibrated!")
+    lines.append("   •  Enforce HTTPS to prevent payload inspection bypass.")
+    lines.append("   •  Implement IP reputation blacklisting for repeat offenders.")
+    lines.append("   •  Add log rotation and archiving for production deployments.")
+    lines.append("")
+    lines.append("=" * 70)
+
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+    print(f"  {GREEN}Report saved → {report_path}{RESET}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -391,11 +481,13 @@ if __name__ == "__main__":
     for i, test in enumerate(TEST_CASES, start=1):
         result = run_single_test(test, i)
         results.append(result)
-        time.sleep(0.3)  # Small delay between requests
+        time.sleep(0.3)
 
     # ── Brute force test ──────────────────────────────────────────────────
     brute_result = run_brute_force_test()
 
     # ── Print summary ─────────────────────────────────────────────────────
-     summary = print_summary(results, brute_result)
+    summary = print_summary(results, brute_result)
+
+    # ── Save report to file ───────────────────────────────────────────────
     save_report(results, brute_result, summary)
