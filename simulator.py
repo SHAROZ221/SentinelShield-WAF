@@ -24,7 +24,7 @@ import requests
 import time
 import json
 
-BASE_URL = "http://localhost:5000"
+BASE_URL = "https://web-production-41b62.up.railway.app/"
 
 # Terminal color codes for pretty output
 GREEN  = "\033[92m"
