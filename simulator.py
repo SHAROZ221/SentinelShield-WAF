@@ -325,7 +325,10 @@ def run_brute_force_test():
     for i in range(BRUTE_FORCE_TEST["count"]):
         data = BRUTE_FORCE_TEST["data_template"](i)
         try:
-            resp = requests.post(url, data=data, timeout=3)
+            resp = requests.post(
+                url, data=data, timeout=3,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            )
             if resp.status_code == 429:
                 blocked_count += 1
             else:
@@ -503,7 +506,7 @@ if __name__ == "__main__":
     for i, test in enumerate(TEST_CASES, start=1):
         result = run_single_test(test, i)
         results.append(result)
-        time.sleep(0.3)
+        time.sleep(2.5)
 
     # ── Brute force test ──────────────────────────────────────────────────
     brute_result = run_brute_force_test()
