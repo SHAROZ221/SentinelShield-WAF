@@ -1,26 +1,6 @@
-"""
-monitor.py – Rate Limiting & IP Behaviour Monitor
-==================================================
-This module tracks how many requests each IP address sends in a given
-time window. If an IP exceeds the allowed limit, it is flagged as
-potentially running a brute-force attack or automated scan.
-
-HOW IT WORKS:
-- Every request that arrives is recorded in a dictionary keyed by IP.
-- We store a list of timestamps for each IP.
-- Old timestamps (outside the time window) are cleaned up on every check.
-- If the count of recent requests exceeds MAX_REQUESTS, the IP is flagged.
-
-This is how real systems implement rate limiting (e.g., Nginx limit_req,
-Cloudflare rate limiting rules).
-"""
-
 import time
 from collections import defaultdict
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CONFIGURATION
-# ─────────────────────────────────────────────────────────────────────────────
 
 # Maximum requests allowed from one IP within the time window
 MAX_REQUESTS = 15
@@ -31,9 +11,7 @@ TIME_WINDOW = 30
 # How long (seconds) a flagged IP stays on the blocklist
 BLOCK_DURATION = 120  # 2 minutes
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STATE (kept in memory — resets when server restarts)
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 # { "ip_address": [timestamp1, timestamp2, ...] }
 request_log = defaultdict(list)
