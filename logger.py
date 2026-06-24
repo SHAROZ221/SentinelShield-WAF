@@ -1,18 +1,3 @@
-"""
-logger.py – Structured Event Logging System
-============================================
-Every request that SentinelShield processes gets logged here.
-Logs are stored in JSON format — one JSON object per line (JSONL format).
-This makes them easy to read, parse, and analyze later.
-
-WHY JSON LOGS?
-- Real SIEM systems (Splunk, Elastic Stack) ingest JSON logs natively.
-- Each field (IP, timestamp, attack type) can be filtered and queried.
-- It's the industry standard for security event logging.
-
-LOG FILE LOCATION: logs/sentinel.log
-"""
-
 import json
 import os
 from datetime import datetime
