@@ -1,26 +1,4 @@
-"""
-rules.py – Attack Signature Detection Engine
-=============================================
-This file contains all the attack patterns SentinelShield looks for.
-Each rule is a regular expression (regex) pattern that matches known
-malicious input seen in real-world web attacks.
-
-HOW IT WORKS:
-- When a request comes in, every part of it (URL, parameters, headers, body)
-  is checked against these patterns.
-- If a match is found, the request is flagged with the attack category name.
-- This is exactly how real WAFs (like ModSecurity) work.
-"""
-
 import re
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ATTACK RULES
-# Each rule is a dict with:
-#   "name"        → Human-readable attack category
-#   "severity"    → HIGH / MEDIUM / LOW
-#   "patterns"    → List of regex strings to match against input
-# ─────────────────────────────────────────────────────────────────────────────
 
 ATTACK_RULES = [
 
