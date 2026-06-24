@@ -1,25 +1,3 @@
-"""
-simulator.py – Automated Attack Simulator
-==========================================
-This script fires a series of real-world attack payloads at the
-SentinelShield WAF so you can see the detection system in action.
-
-It sends:
-  ✓ Normal clean requests        (should be ALLOWED)
-  ✗ SQL Injection attacks         (should be BLOCKED)
-  ✗ XSS attacks                   (should be BLOCKED)
-  ✗ Command Injection             (should be BLOCKED)
-  ✗ LFI / Directory Traversal    (should be BLOCKED)
-  ✗ Brute-force simulation        (should trigger RATE LIMIT)
-  ✗ Scanner simulation            (should be BLOCKED)
-
-HOW TO RUN:
-    python simulator.py
-
-Results are printed to the terminal and all events appear in the dashboard.
-A report is saved to: logs/simulation_report.txt
-"""
-
 from datetime import datetime
 import os
 import requests
